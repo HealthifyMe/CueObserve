@@ -1,0 +1,203 @@
+on:
+  push:
+    branches:
+      - latest_release
+
+name: Deploy all on ecr
+
+jobs:
+  build-and-push-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: cue-observe-frontend
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd ui
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Configure AWS credentials for staging.
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_STAGING_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_STAGING_ACCESS_SECRET }}
+        aws-region: ${{env.AWS_REGION}}
+
+    - name: Pull deployment action
+      uses: actions/checkout@v2-beta
+      with:
+        repository: HealthifyMe/deployment-action
+        token: ${{secrets.PAT}}
+        path: deployment_action
+
+    - name: Deploy
+      uses: ./deployment_action
+      with:
+        regions: '["ap-southeast-1"]'
+        clusters: '["ECS-HealthifyMe"]'
+        services: '["CueObserveFrontend"]'
+        container: 'cue-observe-frontend'
+        commitId: ${{ github.sha }}
+        slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
+        test_deployment_config: '{}'
+
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: cue-observe-backend
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd api
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile.ecs .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Configure AWS credentials for staging.
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_STAGING_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_STAGING_ACCESS_SECRET }}
+        aws-region: ${{env.AWS_REGION}}
+
+    - name: Pull deployment action
+      uses: actions/checkout@v2-beta
+      with:
+        repository: HealthifyMe/deployment-action
+        token: ${{secrets.PAT}}
+        path: deployment_action
+
+    - name: Deploy
+      uses: ./deployment_action
+      with:
+        regions: '["ap-southeast-1"]'
+        clusters: '["ECS-HealthifyMe"]'
+        services: '["CueObserveBackend"]'
+        container: 'cue-observe-backend'
+        commitId: ${{ github.sha }}
+        slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
+        test_deployment_config: '{}'
+
+    - name: Deploy
+      uses: ./deployment_action
+      with:
+        regions: '["ap-southeast-1"]'
+        clusters: '["ECS-HealthifyMe"]'
+        services: '["CueObserveCelery"]'
+        container: 'cue-observe-backend'
+        commitId: ${{ github.sha }}
+        slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
+        test_deployment_config: '{}'
+
+    - name: Deploy
+      uses: ./deployment_action
+      with:
+        regions: '["ap-southeast-1"]'
+        clusters: '["ECS-HealthifyMe"]'
+        services: '["CueObserveCeleryBeat"]'
+        container: 'cue-observe-backend'
+        commitId: ${{ github.sha }}
+        slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
+        test_deployment_config: '{}'
+
+  build-and-push-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: cue-observe-alerts
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd alerts-api
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Configure AWS credentials for staging.
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_STAGING_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_STAGING_ACCESS_SECRET }}
+        aws-region: ${{env.AWS_REGION}}
+
+    - name: Pull deployment action
+      uses: actions/checkout@v2-beta
+      with:
+        repository: HealthifyMe/deployment-action
+        token: ${{secrets.PAT}}
+        path: deployment_action
+
+    - name: Deploy
+      uses: ./deployment_action
+      with:
+        regions: '["ap-southeast-1"]'
+        clusters: '["ECS-HealthifyMe"]'
+        services: '["CueObserveAlerts"]'
+        container: 'cue-observe-alerts'
+        commitId: ${{ github.sha }}
+        slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
+        test_deployment_config: '{}'
