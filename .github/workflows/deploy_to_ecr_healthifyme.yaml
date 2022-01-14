@@ -53,7 +53,7 @@ jobs:
         token: ${{secrets.PAT}}
         path: deployment_action
 
-    - name: Deploy
+    - name: Deploy Frontend
       uses: ./deployment_action
       with:
         regions: '["ap-southeast-1"]'
@@ -111,7 +111,7 @@ jobs:
         token: ${{secrets.PAT}}
         path: deployment_action
 
-    - name: Deploy
+    - name: Deploy Backend
       uses: ./deployment_action
       with:
         regions: '["ap-southeast-1"]'
@@ -122,7 +122,7 @@ jobs:
         slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
         test_deployment_config: '{}'
 
-    - name: Deploy
+    - name: Deploy Celery
       uses: ./deployment_action
       with:
         regions: '["ap-southeast-1"]'
@@ -133,7 +133,7 @@ jobs:
         slackWebHookUrl: ${{ secrets.TEST_CUEOBSERVE_SLACK_WEBHOOK }}
         test_deployment_config: '{}'
 
-    - name: Deploy
+    - name: Deploy CeleryBeat
       uses: ./deployment_action
       with:
         regions: '["ap-southeast-1"]'
@@ -191,7 +191,7 @@ jobs:
         token: ${{secrets.PAT}}
         path: deployment_action
 
-    - name: Deploy
+    - name: Deploy Alerts
       uses: ./deployment_action
       with:
         regions: '["ap-southeast-1"]'
