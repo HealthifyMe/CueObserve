@@ -13,9 +13,29 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 from pathlib import Path
 
+import sentry_sdk
+import newrelic.agent
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+NEWRELIC_INI = os.path.join(BASE_DIR, 'app', 'newrelic.ini')
+
+ENABLE_NEWRELIC = os.environ.get("ENABLE_NEWRELIC", False)
+if ENABLE_NEWRELIC:
+    newrelic.agent.initialize(NEWRELIC_INI, 'cue_observe')
+
+sentry_dsn = os.environ.get("SENTRY_DSN", '')
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[CeleryIntegration(), DjangoIntegration(), LoggingIntegration(), RedisIntegration()],
+    )
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
