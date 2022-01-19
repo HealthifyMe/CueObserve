@@ -1,3 +1,5 @@
 Flask==1.0.2
 gunicorn==20.0.4
+newrelic==7.2.4.171
+sentry_sdk==1.5.1
 slack-sdk==3.9.1
